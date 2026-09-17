@@ -1,4 +1,4 @@
-import os, sys, shutil, subprocess, zipfile, urllib.request
+import os, sys, shutil, subprocess
 from pathlib import Path
 
 BUILD_DIR = Path("./AimlockFF_Project")
@@ -153,8 +153,6 @@ include ':app'
 
 PROPS = 'org.gradle.jvmargs=-Xmx2048m\nandroid.useAndroidX=true\nkotlin.code.style=official\n'
 
-WRAPPER_PROPS = 'distributionBase=GRADLE_USER_HOME\ndistributionPath=wrapper/dists\nzipStoreBase=GRADLE_USER_HOME\nzipStorePath=wrapper/dists\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip\n'
-
 def w(p, c):
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(c, encoding="utf-8")
@@ -165,30 +163,15 @@ def setup():
     w(BUILD_DIR / "settings.gradle", SETTINGS)
     w(BUILD_DIR / "build.gradle", ROOT_GRADLE)
     w(BUILD_DIR / "gradle.properties", PROPS)
-    w(BUILD_DIR / "gradle" / "wrapper" / "gradle-wrapper.properties", WRAPPER_PROPS)
     w(BUILD_DIR / "app" / "build.gradle", BUILD_GRADLE)
     w(BUILD_DIR / "app" / "src" / "main" / "AndroidManifest.xml", MANIFEST)
     w(BUILD_DIR / "app" / "src" / "main" / "java" / "com" / "example" / "aimlockff" / "MainActivity.kt", MAIN_ACTIVITY)
-
-def download_gradle():
-    gd = BUILD_DIR / "gradle-8.7"
-    if gd.exists(): return gd
-    url = "https://services.gradle.org/distributions/gradle-8.7-bin.zip"
-    zip_path = BUILD_DIR / "gradle.zip"
-    print("Downloading Gradle...")
-    urllib.request.urlretrieve(url, zip_path)
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        z.extractall(BUILD_DIR)
-    zip_path.unlink()
-    return gd
 
 def build():
     env = os.environ.copy()
     sdk = env.get("ANDROID_HOME") or env.get("ANDROID_SDK_ROOT")
     if sdk: w(BUILD_DIR / "local.properties", f"sdk.dir={sdk}\n")
-    gradle_bin = download_gradle() / "bin" / "gradle"
-    if os.name == "nt": gradle_bin = Path(str(gradle_bin) + ".bat")
-    r = subprocess.run([str(gradle_bin), "assembleDebug", "--no-daemon"], cwd=BUILD_DIR, env=env)
+    r = subprocess.run(["gradle", "assembleDebug", "--no-daemon"], cwd=BUILD_DIR, env=env)
     if r.returncode != 0: sys.exit(1)
     apk = BUILD_DIR / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
     if apk.exists(): shutil.copy(apk, OUTPUT_APK); print(str(OUTPUT_APK.resolve()))
